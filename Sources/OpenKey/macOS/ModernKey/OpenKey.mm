@@ -68,6 +68,9 @@ extern "C" {
     CGKeyCode _keycode;
     CGEventFlags _flag, _lastFlag = 0, _privateFlag;
     CGEventTapProxy _proxy;
+
+    //defined in OpenKeyManager.m
+    extern void OpenKeyReEnableEventTap(void);
     
     Uint16 _newCharString[MAX_UNICODE_STRING];
     Uint16 _newCharSize;
@@ -186,15 +189,15 @@ extern "C" {
         return false;
     }
 
-    BOOL shouldUseRecommendWorkaround(NSString* topApp) {
+    BOOL shouldUseRecommendWorkaround(NSString* topApp, BOOL spotlightVisible) {
         if (!vFixRecommendBrowser) return false;
-        if (isSpotlightVisible()) return false;
+        if (spotlightVisible) return false;
         if (topApp == nil) return true;
         return ![_recommendWorkaroundDisabledApp containsObject:topApp];
     }
 
-    BOOL shouldUseSelectionReplacement(NSString* topApp) {
-        return isSpotlightVisible() || [_recommendWorkaroundDisabledApp containsObject:topApp];
+    BOOL shouldUseSelectionReplacement(NSString* topApp, BOOL spotlightVisible) {
+        return spotlightVisible || [_recommendWorkaroundDisabledApp containsObject:topApp];
     }
     
     void saveSmartSwitchKeyData() {
@@ -543,7 +546,7 @@ extern "C" {
     
     void handleMacro() {
         //fix autocomplete
-        if (shouldUseRecommendWorkaround(FRONT_APP)) {
+        if (shouldUseRecommendWorkaround(FRONT_APP, isSpotlightVisible())) {
             SendEmptyCharacter();
             pData->backspaceCount++;
         }
@@ -599,6 +602,15 @@ extern "C" {
      * MAIN Callback.
      */
     CGEventRef OpenKeyCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+        //macOS turns the tap off if this callback misses its deadline (heavy system load)
+        //or after certain user input, and tells us through these two pseudo event types.
+        //Without re-enabling here, OpenKey silently stops converting until it is relaunched.
+        //Must run before any CGEventGet*Field call: `event` is not a real event for these types.
+        if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+            OpenKeyReEnableEventTap();
+            return event;
+        }
+
         //dont handle my event
         if (CGEventGetIntegerValueField(event, kCGEventSourceStateID) == CGEventSourceGetSourceStateID(myEventSource)) {
             return event;
@@ -695,16 +707,18 @@ extern "C" {
             TISInputSourceRef isource = TISCopyCurrentKeyboardInputSource();
             if ( isource != NULL )
             {
+                //default to English so typing is never blocked when detection fails
+                BOOL isEnglish = YES;
                 CFArrayRef languages = (CFArrayRef) TISGetInputSourceProperty(isource, kTISPropertyInputSourceLanguages);
-                
-                if (CFArrayGetCount(languages) > 0) {
+                if (languages != NULL && CFArrayGetCount(languages) > 0) {
                     CFStringRef langRef = (CFStringRef)CFArrayGetValueAtIndex(languages, 0);
-                    NSString *currentLanguage = (__bridge NSString *)langRef;
-                    if(![currentLanguage isLike:@"en"]){
-                        return event;
-                    }
-                    CFRelease(langRef);
-                    CFRelease(isource);
+                    //langRef is NOT owned (Get semantics) - never release it;
+                    //read it before CFRelease(isource), which owns the languages array
+                    isEnglish = [(__bridge NSString *)langRef isLike:@"en"];
+                }
+                CFRelease(isource);
+                if (!isEnglish) {
+                    return event;
                 }
             }
         }
@@ -739,7 +753,9 @@ extern "C" {
             } else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) { //handle result signal
                 
                 //fix autocomplete
-                if (shouldUseRecommendWorkaround(FRONT_APP) && pData->extCode != 4) {
+                //one WindowServer query per converted keystroke (was 2; stall reduction)
+                const BOOL spotlightVisible = isSpotlightVisible();
+                if (shouldUseRecommendWorkaround(FRONT_APP, spotlightVisible) && pData->extCode != 4) {
                     if (vFixChromiumBrowser && [_unicodeCompoundApp containsObject:FRONT_APP]) {
                         if (pData->backspaceCount > 0) {
                             SendShiftAndLeftArrow();
@@ -753,7 +769,7 @@ extern "C" {
                     }
                 }
 
-                if (shouldUseSelectionReplacement(FRONT_APP) && pData->backspaceCount > 0) {
+                if (shouldUseSelectionReplacement(FRONT_APP, spotlightVisible) && pData->backspaceCount > 0) {
                     for (_i = 0; _i < pData->backspaceCount; _i++) {
                         SendShiftAndLeftArrow();
                     }
