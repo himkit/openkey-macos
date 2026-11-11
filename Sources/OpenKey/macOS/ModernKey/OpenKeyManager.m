@@ -227,7 +227,7 @@ void OpenKeyReEnableEventTap(void) {
     //The OpenKeyUpdate target is no longer built into the bundle. Without it the code
     //below would pass a nil path to fileURLWithPath: and crash, so open the release page.
     if (![[NSFileManager defaultManager] fileExistsAtPath:[self getUpdateBundlePath]]) {
-        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/himkit/OpenKey/releases/latest"]];
+        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/himkit/openkey-macos/releases/latest"]];
         return;
     }
 
@@ -245,7 +245,7 @@ void OpenKeyReEnableEventTap(void) {
     
     NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
     if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
-        [workspace openURL:[NSURL URLWithString:@"https://github.com/himkit/OpenKey/releases/latest"]];
+        [workspace openURL:[NSURL URLWithString:@"https://github.com/himkit/openkey-macos/releases/latest"]];
         return;
     }
     NSURL *url = [NSURL fileURLWithPath:target];
