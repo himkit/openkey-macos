@@ -224,6 +224,13 @@ void OpenKeyReEnableEventTap(void) {
 }
 
 +(void)launchUpdateHelper {
+    //The OpenKeyUpdate target is no longer built into the bundle. Without it the code
+    //below would pass a nil path to fileURLWithPath: and crash, so open the release page.
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[self getUpdateBundlePath]]) {
+        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/himkit/OpenKey/releases/latest"]];
+        return;
+    }
+
     //check update app has exist or not
     NSError *copyError = nil;
     NSString* target = [NSString stringWithFormat:@"%@/OpenKeyUpdate.app", [self getApplicationSupportFolder]];
@@ -237,7 +244,11 @@ void OpenKeyReEnableEventTap(void) {
     }
     
     NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
-    NSURL *url = [NSURL fileURLWithPath:[workspace fullPathForApplication:target]];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
+        [workspace openURL:[NSURL URLWithString:@"https://github.com/himkit/OpenKey/releases/latest"]];
+        return;
+    }
+    NSURL *url = [NSURL fileURLWithPath:target];
     NSError *error = nil;
     NSArray *arguments = [NSArray arrayWithObjects: @"yeah", nil];
     [workspace launchApplicationAtURL:url options:0 configuration:[NSDictionary dictionaryWithObject:arguments forKey:NSWorkspaceLaunchConfigurationArguments] error:&error];

@@ -23,6 +23,7 @@ extern void OnTableCodeChange(void);
 extern void OnInputMethodChanged(void);
 extern void RequestNewSession(void);
 extern void OnActiveAppChanged(void);
+extern void OnFrontAppChanged(void);
 
 //see document in Engine.h
 int vLanguage = 1;
@@ -320,8 +321,33 @@ extern bool convertToolDontAlertWhenCompleted;
 }
 
 -(void)setRunOnStartup:(BOOL)val {
-    CFStringRef appId = (__bridge CFStringRef)@"com.tuyenmai.OpenKeyHelper";
-    SMLoginItemSetEnabled(appId, val);
+    CFStringRef legacyHelperId = (__bridge CFStringRef)@"com.tuyenmai.OpenKeyHelper";
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 130000
+    if (@available(macOS 13.0, *)) {
+        //The OpenKeyHelper login item is no longer built into the app bundle, so
+        //SMLoginItemSetEnabled cannot work for new installs. Register the app itself.
+        SMAppService *service = [SMAppService mainAppService];
+        NSError *error = nil;
+        //RequiresApproval means already registered and waiting for the user in
+        //System Settings > Login Items; registering again would only re-notify.
+        if (val && (service.status == SMAppServiceStatusNotRegistered || service.status == SMAppServiceStatusNotFound)) {
+            if (![service registerAndReturnError:&error]) {
+                NSLog(@"OpenKey: cannot register login item: %@", error);
+            }
+        } else if (!val && (service.status == SMAppServiceStatusEnabled || service.status == SMAppServiceStatusRequiresApproval)) {
+            if (![service unregisterAndReturnError:&error]) {
+                NSLog(@"OpenKey: cannot unregister login item: %@", error);
+            }
+        }
+        //turn off the helper left behind by older installs, so OpenKey is not launched twice
+        SMLoginItemSetEnabled(legacyHelperId, false);
+        return;
+    }
+#endif
+    //macOS < 13: only works where the legacy helper is still installed
+    if (!SMLoginItemSetEnabled(legacyHelperId, val)) {
+        NSLog(@"OpenKey: run on startup is not available (OpenKeyHelper not installed)");
+    }
 }
 
 -(void)setGrayIcon:(BOOL)val {
@@ -547,6 +573,7 @@ extern bool convertToolDontAlertWhenCompleted;
 }
 
 -(void)activeAppChanged: (NSNotification*)note {
+    OnFrontAppChanged();
     if (vUseSmartSwitchKey && [OpenKeyManager isInited]) {
         OnActiveAppChanged();
     }

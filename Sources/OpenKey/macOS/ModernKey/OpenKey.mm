@@ -12,7 +12,8 @@
 #import "AppDelegate.h"
 #import "ViewController.h"
 
-#define FRONT_APP [[NSWorkspace sharedWorkspace] frontmostApplication].bundleIdentifier
+//cached; refreshed on NSWorkspaceDidActivateApplicationNotification (see OnFrontAppChanged)
+#define FRONT_APP CachedFrontApp()
 #define OTHER_CONTROL_KEY (_flag & kCGEventFlagMaskCommand) || (_flag & kCGEventFlagMaskControl) || \
                             (_flag & kCGEventFlagMaskAlternate) || (_flag & kCGEventFlagMaskSecondaryFn) || \
                             (_flag & kCGEventFlagMaskNumericPad) || (_flag & kCGEventFlagMaskHelp)
@@ -178,7 +179,44 @@ extern "C" {
         return false;
     }
 
-    BOOL isSpotlightVisible() {
+    //The event tap callback runs on the main thread and must stay fast, otherwise macOS
+    //disables the tap. Both lookups below are cached instead of being queried per keystroke.
+    //Everything here runs on the main thread (tap callback and workspace notifications).
+    NSString* _cachedFrontApp = nil;
+    BOOL _cachedFrontAppValid = NO;
+
+    NSString* CachedFrontApp() {
+        if (!_cachedFrontAppValid) {
+            _cachedFrontApp = [[NSWorkspace sharedWorkspace] frontmostApplication].bundleIdentifier;
+            _cachedFrontAppValid = YES;
+        }
+        return _cachedFrontApp;
+    }
+
+    int _spotlightVisibleCache = -1; //-1 unknown, 0 hidden, 1 visible
+    NSTimeInterval _spotlightCheckTime = 0;
+    NSTimeInterval _spotlightUnsettledUntil = 0;
+    #define SPOTLIGHT_CACHE_SECONDS 0.5
+    //the panel animates in and out; window-list answers during that time are not final
+    #define SPOTLIGHT_SETTLE_SECONDS 0.5
+
+    //monotonic clock: wall-clock changes must not freeze the cache
+    NSTimeInterval MonotonicNow() {
+        return [[NSProcessInfo processInfo] systemUptime];
+    }
+
+    //Called for events that can open or close the Spotlight panel.
+    void InvalidateSpotlightCache() {
+        _spotlightVisibleCache = -1;
+        _spotlightUnsettledUntil = MonotonicNow() + SPOTLIGHT_SETTLE_SECONDS;
+    }
+
+    void OnFrontAppChanged() {
+        _cachedFrontAppValid = NO;
+        InvalidateSpotlightCache();
+    }
+
+    BOOL queryIsSpotlightVisible() {
         NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
                                                                         kCGNullWindowID));
         const CGWindowLevel statusLevel = CGWindowLevelForKey(kCGStatusWindowLevelKey);
@@ -193,6 +231,19 @@ extern "C" {
             return true;
         }
         return false;
+    }
+
+    //Window-list queries are synchronous WindowServer round trips. Reuse the last answer
+    //until an event that could toggle Spotlight arrives, or the cache gets old (covers
+    //the dedicated Spotlight key, which the tap does not see as a key down).
+    BOOL isSpotlightVisible() {
+        const NSTimeInterval now = MonotonicNow();
+        if (_spotlightVisibleCache < 0 || now < _spotlightUnsettledUntil ||
+            now - _spotlightCheckTime > SPOTLIGHT_CACHE_SECONDS) {
+            _spotlightVisibleCache = queryIsSpotlightVisible() ? 1 : 0;
+            _spotlightCheckTime = now;
+        }
+        return _spotlightVisibleCache == 1;
     }
 
     BOOL shouldUseRecommendWorkaround(NSString* topApp, BOOL spotlightVisible) {
@@ -624,7 +675,17 @@ extern "C" {
         
         _flag = CGEventGetFlags(event);
         _keycode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-        
+
+        //events that may open or close Spotlight (Cmd+Space, Esc, Return, clicks)
+        if (type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown ||
+            (type == kCGEventKeyDown && ((_flag & kCGEventFlagMaskCommand) ||
+                                         _keycode == KEY_ESC || _keycode == KEY_ENTER || _keycode == KEY_RETURN))) {
+            InvalidateSpotlightCache();
+            //Cmd+Tab: the activation notification may arrive after the next keystroke
+            if (type == kCGEventKeyDown && (_flag & kCGEventFlagMaskCommand))
+                _cachedFrontAppValid = NO;
+        }
+
         if (type == kCGEventKeyDown && vPerformLayoutCompat) {
             // If conversion fail, use current keycode
            _keycode = ConvertEventToKeyboadLayoutCompatKeyCode(event, _keycode);
