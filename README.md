@@ -1,7 +1,9 @@
 
-# [OpenKey](http://open-key.org)
-### [Download bản mới nhất](https://github.com/tuyenvm/OpenKey/releases)
-[![GitHub release](https://img.shields.io/github/v/release/tuyenvm/OpenKey.svg)](https://github.com/tuyenvm/OpenKey/releases/latest)
+# [OpenKey](http://open-key.org) for macOS
+### [Download bản mới nhất](https://github.com/himkit/openkey-macos/releases/latest)
+[![GitHub release](https://img.shields.io/github/v/release/himkit/openkey-macos.svg)](https://github.com/himkit/openkey-macos/releases/latest)
+
+> **Bản fork chỉ hỗ trợ macOS** của [OpenKey](https://github.com/tuyenvm/OpenKey) (tác giả Mai Vũ Tuyên). Bản fork sửa lỗi bộ gõ ngừng hoạt động khi macOS tắt event tap, lỗi gõ sai trong Terminal/TUI (ký tự `D` thừa, chữ bị chèn sai chỗ), và tính năng "Chạy khi khởi động" trên macOS 13+. Bản build là universal (Intel + Apple Silicon), ký ad-hoc. Cài bằng Homebrew qua tap [`himkit/tap`](https://github.com/himkit/homebrew-tap).
 
 ### Open source Vietnamese Input App for macOS - Bộ gõ tiếng Việt nguồn mở cho macOS.
 Bộ gõ tiếng Việt mới cho macOS, sử dụng kỹ thuật `Backspace`. Loại bỏ lỗi gạch chân khó chịu ở bộ gõ mặc định. Hoàn toàn miễn phí và là nguồn mở, luôn cập nhật và phát triển.
@@ -57,34 +59,29 @@ Bộ gõ tiếng Việt mới cho macOS, sử dụng kỹ thuật `Backspace`. L
 - ...
 
 
-[Changelog](https://github.com/tuyenvm/OpenKey/blob/master/CHANGELOG.md)
+[Changelog (upstream)](CHANGELOG.md) · [Release của bản fork](https://github.com/himkit/openkey-macos/releases)
 
 ## Cài đặt:
-**Cài đặt thủ công:**  
-Tải bản OpenKey mới nhất từ [đây](https://github.com/tuyenvm/OpenKey/releases/latest), mở file `dmg` ra rồi kéo thả `OpenKey.app` vào thư mục `Application`.
+**Cài bằng Homebrew (khuyên dùng):**
+```
+brew tap himkit/tap
+brew install --cask --no-quarantine himkit/tap/openkey
+```
+Bản build ký ad-hoc (chưa notarize). Thiếu `--no-quarantine` thì macOS báo *"OpenKey is damaged"*; khi đó chạy `xattr -d com.apple.quarantine /Applications/OpenKey.app`.
 
-**Cài bằng Homebrew:** (by nhymxu)  
-Nếu chưa cài Homebrew, mở terminal, nhập:
+**Cập nhật:**
 ```
-$ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+brew upgrade --cask himkit/tap/openkey
+xattr -d com.apple.quarantine /Applications/OpenKey.app
+pkill -x OpenKey; open /Applications/OpenKey.app
 ```
+`brew upgrade` gắn lại cờ quarantine, nên gỡ cờ và mở lại OpenKey sau mỗi lần cập nhật. Nếu OpenKey tự tắt ngay khi mở, cấp lại quyền Accessibility (xem bên dưới).
 
-Kiểm tra phiên bản OpenKey:
-```
-$ brew info --cask openkey
-```
-Gõ lệnh sau để homebrew tự cài OpenKey cho bạn:
-```
-$ brew install --cask openkey
-```
-
-Để update phiên bản mới nhất của OpenKey
-```
-$ brew upgrade --cask openkey
-```
+**Cài đặt thủ công:**
+Tải `OpenKey-x.y.z.zip` mới nhất từ [đây](https://github.com/himkit/openkey-macos/releases/latest), giải nén rồi kéo thả `OpenKey.app` vào thư mục `Applications`.
 
 ## Note - Lưu ý:
-OpenKey cần cấp quyền, vào *System Preferences -> Security & Privacy -> Accessibility*, kích hoạt `OpenKey.app`. **Không tắt nó khi đang dùng OpenKey**.
+OpenKey cần cấp quyền, vào *System Settings -> Privacy & Security -> Accessibility*, kích hoạt `OpenKey.app`. **Không tắt nó khi đang dùng OpenKey**.
 ![Guide](https://raw.githubusercontent.com/tuyenvm/tuyenvm.github.io/master/images/openkey-guide.png "Accessibility").
 
 ## Tác giả
@@ -93,8 +90,9 @@ OpenKey cần cấp quyền, vào *System Preferences -> Security & Privacy -> A
 - Fanpage: [https://www.facebook.com/OpenKeyVN](https://www.facebook.com/OpenKeyVN)
 
 ## Liên kết
-- [OpenKey cho Windows, xem chi tiết tại đây](https://github.com/tuyenvm/OpenKey/tree/master/Sources/OpenKey/win32)
-- [OpenKey cho Linux (đang phát triển)](https://github.com/tuyenvm/OpenKey/tree/master/Sources/OpenKey/linux)
+- Bản gốc OpenKey (macOS + Windows): [tuyenvm/OpenKey](https://github.com/tuyenvm/OpenKey). Bản fork này không phát hành bản Windows/Linux; mã nguồn `win32/`, `linux/` được giữ nguyên từ upstream.
+- [OpenKey cho Windows (upstream)](https://github.com/tuyenvm/OpenKey/tree/master/Sources/OpenKey/win32)
+- Homebrew tap: [himkit/homebrew-tap](https://github.com/himkit/homebrew-tap)
 ## Một điều nhỏ nhoi
 Đừng quên ủng hộ tác giả bằng cách mua ly cafe cho tác giả tỉnh ngủ nhé:  
 [Buy me a coffee ^^](https://tuyenvm.github.io/donate.html)  
