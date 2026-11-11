@@ -181,10 +181,16 @@ extern "C" {
     BOOL isSpotlightVisible() {
         NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
                                                                         kCGNullWindowID));
+        const CGWindowLevel statusLevel = CGWindowLevelForKey(kCGStatusWindowLevelKey);
         for (NSDictionary *window in windows) {
-            if ([[window objectForKey:(__bridge NSString *)kCGWindowOwnerName] isEqualToString:@"Spotlight"]) {
-                return true;
+            if (![[window objectForKey:(__bridge NSString *)kCGWindowOwnerName] isEqualToString:@"Spotlight"]) {
+                continue;
             }
+            // Spotlight's menu-bar status item is always on screen; it is not the search panel.
+            if ([[window objectForKey:(__bridge NSString *)kCGWindowLayer] intValue] == statusLevel) {
+                continue;
+            }
+            return true;
         }
         return false;
     }
