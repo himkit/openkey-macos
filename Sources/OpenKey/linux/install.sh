@@ -4,7 +4,9 @@
 #   ./install.sh --add-source   also add OpenKey to GNOME input sources
 set -e
 cd "$(dirname "$0")"
-VERSION="$(python3 -I src/openkey_ibus.py --version)"
+python3 -I -c 'import gi; gi.require_version("IBus", "1.0"); from gi.repository import IBus' 2>/dev/null || {
+    echo "!! thiếu thư viện IBus cho Python. Cài: sudo apt install python3-gi gir1.2-ibus-1.0"; exit 1; }
+VERSION="$(sed -n 's/^VERSION = "\(.*\)"$/\1/p' src/openkey_ibus.py)"
 LIBDIR="${OPENKEY_LIBDIR:-$HOME/.local/share/openkey}"
 COMPONENT_DIR=/usr/share/ibus/component
 
@@ -12,8 +14,6 @@ if [ ! -f build/libopenkey.so ]; then
     echo ">> building libopenkey.so"
     make
 fi
-python3 -I -c 'import gi; gi.require_version("IBus", "1.0"); from gi.repository import IBus' 2>/dev/null || {
-    echo "!! thiếu thư viện IBus cho Python. Cài: sudo apt install python3-gi gir1.2-ibus-1.0"; exit 1; }
 
 echo ">> installing files to $LIBDIR"
 mkdir -p "$LIBDIR"

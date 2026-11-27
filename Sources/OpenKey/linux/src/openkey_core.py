@@ -178,7 +178,8 @@ class TextBuffer:
                 self.cells.append(char)
         return r
 
-    def type(self, s):
+    def type(self, s, caps_lock=False):
+        """Type s; caps_lock=True sends the raw CapsLock status (2) for unshifted keys."""
         for ch in s:
             if ch == "\b":
                 self.key(KEY_DELETE)
@@ -187,5 +188,5 @@ class TextBuffer:
                 self.key(KEY_ENTER, "\n")
                 continue
             keycode, shift = CHAR_TO_KEY[ch]
-            self.key(keycode, ch, 1 if shift else 0)
+            self.key(keycode, ch, 1 if shift else (2 if caps_lock else 0))
         return self.text

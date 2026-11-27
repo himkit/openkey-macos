@@ -30,7 +30,7 @@ test-ibus: build/libopenkey.so
 install: build/libopenkey.so
 	./install.sh
 
-VERSION := $(shell python3 -I src/openkey_ibus.py --version)
+VERSION := $(shell sed -n 's/^VERSION = "\(.*\)"$$/\1/p' src/openkey_ibus.py)
 DIST    := openkey-linux-$(VERSION)-$(shell uname -m)
 
 # self-contained release tarball (engine copied in, library prebuilt)

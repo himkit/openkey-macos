@@ -260,7 +260,11 @@ int ok_process_key(int keycode, int caps_status, int other_control, ok_result* r
                 pushEngineChar(r, pData->charData[i]);
         }
         if (pData->code == vRestore || pData->code == vRestoreAndStartNewSession) {
-            Uint16 ch = keyCodeToCharacter(key | (anyCaps ? CAPS_MASK : 0));
+            // CapsLock (caps_status 2) only changes letters; digits and punctuation
+            // are shifted by Shift alone (CapsLock + ',' is ',', not '<')
+            Uint16 base = keyCodeToCharacter(key);
+            bool isLetter = base >= 'a' && base <= 'z';
+            Uint16 ch = keyCodeToCharacter(key | ((isLetter ? anyCaps : caps_status == 1) ? CAPS_MASK : 0));
             if (ch != 0)
                 pushEntry(r, ch);       // restored word + the key just pressed
             else

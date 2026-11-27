@@ -18,14 +18,14 @@ failures = 0
 count = 0
 
 
-def check(keys, expected, **opts):
+def check(keys, expected, caps_lock=False, **opts):
     global failures, count
     cfg = dict(DEFAULTS)
     cfg.update(opts)
     for k, v in cfg.items():
         engine.set(k, v)
     engine.new_session()
-    got = TextBuffer(engine).type(keys)
+    got = TextBuffer(engine).type(keys, caps_lock)
     count += 1
     if got != expected:
         failures += 1
@@ -66,6 +66,12 @@ check("tooi\b\b\b\b", "")
 # restore key when the word is not Vietnamese
 check("wordf ", "wordf ")
 check("tesst ", "test ")                             # ss cancels the mark
+
+# CapsLock (raw status 2) does not shift the key re-sent after a restore
+check("VIEETJM,", "VIEETJM,", caps_lock=True)
+check("HOAFK.", "HOAFK.", caps_lock=True)
+check("A11 ", "A1 ", caps_lock=True, input_type=1)
+check("VIEETJ ", "VIỆT ", caps_lock=True)
 
 # --- quick telex: cc=ch, gg=gi, nn=ng, ... ---
 check("nnuwowif ", "người ", quick_telex=1)
