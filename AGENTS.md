@@ -1,6 +1,6 @@
 # AGENTS.md
 
-OpenKey is an open-source Vietnamese keyboard app for macOS and Windows, plus an IBus input method for Linux. It is **not** an IME/input-method bundle: it captures keyboard events and rewrites text via the "backspace" technique using the macOS Accessibility API (win32: low-level keyboard hooks). It runs as a regular menu-bar/tray app and requires the macOS Accessibility permission, which shapes most of the macOS code.
+OpenKey is an open-source Vietnamese keyboard app for macOS and Windows, plus an IBus input method for Linux. On macOS and Windows it is **not** an IME/input-method bundle: it captures keyboard events and rewrites text via the "backspace" technique using the macOS Accessibility API (win32: low-level keyboard hooks). It runs as a regular menu-bar/tray app and requires the macOS Accessibility permission, which shapes most of the macOS code.
 
 This repo is `himkit/openkey-macos`, a fork of upstream `tuyenvm/OpenKey`. macOS releases are distributed through the Homebrew tap `himkit/homebrew-tap` (see Releases). `linux/` is this fork's own IBus port (see below). The `win32/` tree is upstream code kept as-is: not built, released, or maintained here.
 

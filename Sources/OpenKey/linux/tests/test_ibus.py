@@ -141,6 +141,14 @@ class FakeField:
         pump(0.1)
         return self.text, self.preedit
 
+    def type_keys(self, s, state=0):
+        """Send each character's keyval with an explicit modifier state (CapsLock, Shift...)."""
+        for ch in s:
+            xkc = CHAR_TO_KEY[ch][0]
+            self.press(IBus.unicode_to_keyval(ch), xkc - 8, state)
+        pump(0.1)
+        return self.text, self.preedit
+
     def tap_modifiers(self, *keys):
         for kv, kc in keys:
             self.ic.process_key_event(kv, kc, 0)
@@ -213,6 +221,54 @@ try:
     f.ic.set_content_type(IBus.InputPurpose.FREE_FORM, 0)
     pump(0.1)
 
+    LOCK, SHIFT = IBus.ModifierType.LOCK_MASK, IBus.ModifierType.SHIFT_MASK
+
+    def prop(name, on=True):
+        f.ic.property_activate(name, IBus.PropState.CHECKED if on else IBus.PropState.UNCHECKED)
+        pump(0.2)
+
+    def fresh():
+        f.text = ""
+        f.ic.reset()
+        pump(0.05)
+
+    # CapsLock: punctuation / digits re-sent after a restore stay unshifted
+    fresh()
+    check("capslock: restore keeps ','", f.type_keys("VIEETJM,", LOCK), ("VIEETJM,", ""))
+    prop("input_type.1")  # VNI
+    fresh()
+    check("capslock: VNI double tone digit", f.type_keys("A11 ", LOCK), ("A1 ", ""))
+    prop("input_type.0")  # Telex
+
+    # CapsLock + Shift gives lower case letters on Linux: the whole word must follow
+    fresh()
+    check("capslock+shift: lower case", f.type_keys("vieejt ", LOCK | SHIFT), ("việt ", ""))
+
+    # layouts where digits need Shift (AZERTY): VNI tone digits still work
+    prop("input_type.1")
+    fresh()
+    f.type_keys("a")
+    check("shifted digit layout: VNI tone", f.type_keys("1 ", SHIFT), ("á ", ""))
+    prop("input_type.0")
+
+    # upper case first letter of a sentence, in preedit mode
+    prop("opt.upper_case_first_char")
+    fresh()
+    check("upper case first char (preedit)", f.type("xin chaof. ban "), ("xin chào. Ban ", ""))
+    prop("opt.upper_case_first_char", False)
+
+    # a modifier release that never arrives (Alt+Tab) must not block the V/E hotkey
+    fresh()
+    f.ic.process_key_event(IBus.KEY_Alt_L, 56, 0)   # Alt down, release goes to another window
+    f.ic.focus_out()
+    pump(0.1)
+    f.ic.focus_in()
+    pump(0.1)
+    f.tap_modifiers((IBus.KEY_Control_L, 29), (IBus.KEY_Shift_L, 42))
+    check("ctrl+shift after lost Alt release", f.type("vieetj "), ("vieetj ", ""))
+    f.tap_modifiers((IBus.KEY_Control_L, 29), (IBus.KEY_Shift_L, 42))
+    fresh()
+
     # --- surrounding-text mode (no underline, OpenKey "backspace" technique) ---
     f2 = FakeField(bus, surrounding=True)
     f2.ic.property_activate("output_mode.surrounding", IBus.PropState.CHECKED)
@@ -235,7 +291,7 @@ finally:
     except subprocess.TimeoutExpired:
         daemon.kill()
     log = open(os.path.join(tmp, "daemon.log")).read()
-    if failures or "openkey: error" in log or "Traceback" in log:
+    if "openkey: error" in log or "Traceback" in log:
         print(log[-3000:])
         failures += 1
     shutil.rmtree(tmp, ignore_errors=True)

@@ -30,7 +30,7 @@ from openkey_core import (BREAK_KEYS, CHAR_TO_KEY, KEY_DELETE, KEY_DOWN, KEY_ENT
                           KEY_ESC, KEY_LEFT, KEY_RIGHT, KEY_SPACE, KEY_TAB, KEY_UP,
                           OK_CONSUME, OK_PASS, OK_REPLACE_PASS, Engine)
 
-VERSION = "2.0.7-linux1"
+VERSION = "2.0.7-linux2"
 CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "openkey")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 MACRO_FILE = os.path.join(CONFIG_DIR, "macros.txt")
@@ -348,8 +348,15 @@ class OpenKeyEngine(IBus.Engine):
             self._reset_word()
             return False
 
-        shift = bool(state & M.SHIFT_MASK)
-        caps_status = 1 if shift else (2 if state & M.LOCK_MASK else 0)
+        # Take the case from the character XKB produced, not from the modifier state:
+        # CapsLock+Shift gives lower case on Linux, CapsLock does not shift digits or
+        # punctuation, and some layouts (AZERTY) need Shift for plain digits.
+        if ch is None:
+            caps_status = 1 if state & M.SHIFT_MASK else 0
+        elif ch.isalpha():
+            caps_status = 1 if ch.isupper() else 0
+        else:
+            caps_status = 1 if CHAR_TO_KEY[ch][1] else 0
 
         if self.use_preedit and self.s.data["language"] == 1:
             return self._process_preedit(okkey, ch, caps_status, other)
@@ -386,13 +393,15 @@ class OpenKeyEngine(IBus.Engine):
 
         is_break = okkey == KEY_SPACE or okkey in BREAK_KEYS or (ch is not None and ch in "!@#$%^&*()")
         if is_break:
+            # The engine has already ended the word for this key. No full reset here:
+            # ok_new_session() would also drop its sentence state (upper case first letter).
+            # Edits never reach back into committed text: a BackSpace with an empty
+            # preedit resets the engine before passing through.
             if ch is not None:
                 # space / punctuation: commit the word together with the character
                 self._commit_preedit("" if r.action == OK_CONSUME else ch)
-                self._reset_word()
                 return True
             self._commit_preedit()     # Enter, Tab, arrows, Esc: let the key act afterwards
-            self._reset_word()
             return False
 
         if r.action != OK_CONSUME and ch is not None:
@@ -428,7 +437,14 @@ class OpenKeyEngine(IBus.Engine):
         return r.action == OK_CONSUME
 
     # ------------------------------------------------------------------ IBus life cycle
+    def _clear_modifiers(self):
+        # a release can go to another window (Alt+Tab, Super): never keep a stale "held" key
+        self.mods_down = set()
+        self.chord = set()
+        self.chord_dirty = False
+
     def do_focus_in(self):
+        self._clear_modifiers()
         self.register_properties(self.prop_list)
         self._update_language_prop()
         self._reset_word()
@@ -436,11 +452,13 @@ class OpenKeyEngine(IBus.Engine):
 
     def do_focus_out(self):
         # preedit is committed by the client (PreeditFocusMode.COMMIT)
+        self._clear_modifiers()
         self.cells = []
         self.preedit_active = False
         self.ok.new_session()
 
     def do_reset(self):
+        self._clear_modifiers()
         self.cells = []
         self.preedit_active = False
         self.ok.new_session()
