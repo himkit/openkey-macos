@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component>
+  <name>org.freedesktop.IBus.OpenKey</name>
+  <description>OpenKey - Vietnamese input method</description>
+  <exec>/usr/bin/python3 -I @LIBDIR@/openkey_ibus.py --ibus</exec>
+  <version>@VERSION@</version>
+  <author>Mai Vu Tuyen (OpenKey engine)</author>
+  <license>GPL</license>
+  <homepage>https://github.com/himkit/openkey-macos</homepage>
+  <textdomain>openkey</textdomain>
+  <engines>
+    <engine>
+      <name>openkey</name>
+      <language>vi</language>
+      <license>GPL</license>
+      <author>Mai Vu Tuyen (OpenKey engine)</author>
+      <icon>@LIBDIR@/openkey.svg</icon>
+      <layout>us</layout>
+      <longname>OpenKey</longname>
+      <description>Bộ gõ tiếng Việt OpenKey (Telex, VNI, Simple Telex)</description>
+      <rank>99</rank>
+      <symbol>V</symbol>
+    </engine>
+  </engines>
+</component>

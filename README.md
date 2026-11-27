@@ -90,7 +90,8 @@ OpenKey cần cấp quyền, vào *System Settings -> Privacy & Security -> Acce
 - Fanpage: [https://www.facebook.com/OpenKeyVN](https://www.facebook.com/OpenKeyVN)
 
 ## Liên kết
-- Bản gốc OpenKey (macOS + Windows): [tuyenvm/OpenKey](https://github.com/tuyenvm/OpenKey). Bản fork này không phát hành bản Windows/Linux; mã nguồn `win32/`, `linux/` được giữ nguyên từ upstream.
+- Bản gốc OpenKey (macOS + Windows): [tuyenvm/OpenKey](https://github.com/tuyenvm/OpenKey). Bản fork này không phát hành bản Windows; mã nguồn `win32/` được giữ nguyên từ upstream.
+- [OpenKey cho Linux (IBus, Wayland/X11)](Sources/OpenKey/linux): build từ mã nguồn, xem hướng dẫn trong thư mục.
 - [OpenKey cho Windows (upstream)](https://github.com/tuyenvm/OpenKey/tree/master/Sources/OpenKey/win32)
 - Homebrew tap: [himkit/homebrew-tap](https://github.com/himkit/homebrew-tap)
 ## Một điều nhỏ nhoi
